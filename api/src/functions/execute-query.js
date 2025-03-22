@@ -31,39 +31,29 @@ app.http('execute-query', {
                 throw new Error("Database connection string not configured");
             }
 
-            // Parse connection string manually
-            const connectionParts = {};
-            connectionString.split(';').forEach(part => {
-                if (!part) return;
-                const equalsPos = part.indexOf('=');
-                if (equalsPos > 0) {
-                    const key = part.substring(0, equalsPos).trim();
-                    const value = part.substring(equalsPos + 1).trim();
-                    connectionParts[key] = value;
-                }
-            });
-            
-            // Configure SQL connection based on your specific connection string format
+            // Log the entire connection string (remove this in production!)
+            context.log('Connection string (masked):', 
+                connectionString.replace(/Password=[^;]+/, 'Password=***MASKED***'));
+
+            // Create direct config without parsing
             const config = {
-                user: connectionParts['User ID'],
-                password: connectionParts['Password'],
-                server: connectionParts['Server'] ? connectionParts['Server'].replace('tcp:', '').split(',')[0] : null,
-                database: connectionParts['Initial Catalog'],
+                user: 'zamri',
+                password: 'Afiqdaniel11$',
+                server: 'dbtestone.database.windows.net', // Remove tcp: and port
+                database: 'mydataweb', // Use Initial Catalog value
                 options: {
-                    encrypt: connectionParts['Encrypt'] === 'True',
-                    trustServerCertificate: connectionParts['TrustServerCertificate'] === 'True',
-                    connectionTimeout: parseInt(connectionParts['Connection Timeout'] || '30'),
-                    port: connectionParts['Server'] && connectionParts['Server'].includes(',') ? 
-                          parseInt(connectionParts['Server'].split(',')[1]) : 1433
+                    encrypt: true,
+                    trustServerCertificate: false,
+                    port: 1433
                 }
             };
             
-            // Log connection details for debugging (remove in production)
+            // Log connection config for debugging
             context.log('Connection config:', JSON.stringify({
                 user: config.user,
                 server: config.server,
                 database: config.database,
-                // Don't log password
+                options: config.options,
                 hasPassword: !!config.password
             }));
 
