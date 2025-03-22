@@ -6,7 +6,6 @@
   },
   "dependencies": {
     "@azure/functions": "^4.7.0",
-    "mssql": "^7.3.0"
-    
+    "mssql": "^7.3.5"
   }
 }
