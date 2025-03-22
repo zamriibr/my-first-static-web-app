@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>Vanilla JavaScript App with SQL Query</title>
+    <style>
+        .query-section {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        
+        #sqlQuery {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+            font-family: monospace;
+            padding: 8px;
+        }
+        
+        #queryResults {
+            margin-top: 15px;
+            overflow-x: auto;
+        }
+        
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+        }
+        
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+
+        .success-message {
+            color: green;
+            font-weight: bold;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            border-top-color: #000;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Vanilla JavaScript App</h1>
+        <p>Loading content from the API: <b id="name">...</b></p>
+
+        <h1>Static Web Apps Database Connections</h1>
+        <blockquote>
+            Open the console in the browser developer tools to see the API responses.
+        </blockquote>
+        <div>
+            <button id="list" onclick="list()">List</button>
+            <button id="get" onclick="get()">Get</button>
+            <button id="update" onclick="update()">Update</button>
+            <button id="create" onclick="create()">Create</button>
+            <button id="delete" onclick="del()">Delete</button>
+        </div>
+
+        <div class="query-section">
+            <h2>Custom SQL Query</h2>
+            <textarea id="sqlQuery" placeholder="Enter your SQL query (e.g., SELECT * FROM Person)"></textarea>
+            <div>
+                <button id="executeBtn" onclick="executeQuery()">Execute Query</button>
+                <span id="loadingIndicator" style="display: none;" class="loading"></span>
+            </div>
+            <div id="queryResults"></div>
+        </div>
+    </main>
+
+    <script>
+    (async function() {
+        const { text } = await( await fetch(`/api/message`)).json();
+        document.querySelector('#name').textContent = text;
+    }());
+
+    async function list() {
+      const endpoint = '/data-api/rest/Person';
+      const response = await fetch(endpoint);
+      const data = await response.json();
+      console.table(data.value);
+    }
+
+    async function get() {
+      const id = 1;
+      const endpoint = `/data-api/rest/Person/Id`;
+      const response = await fetch(`${endpoint}/${id}`);
+      const result = await response.json();
+      console.table(result.value);
+    }
+
+    async function update() {
+      const id = 1;
+      const data = {
+        Name: "Molly"
+      };
+
+      const endpoint = '/data-api/rest/Person/Id';
+      const response = await fetch(`${endpoint}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      console.table(result.value);
+    }
+
+    async function create() {
+      const data = {
+        Name: "Pedro"
+      };
+
+      const endpoint = `/data-api/rest/Person/`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      console.table(result.value);
+    }
+
+    async function del() {
+      const id = 3;
+      const endpoint = '/data-api/rest/Person/Id';
+      const response = await fetch(`${endpoint}/${id}`, {
+        method: "DELETE"
+      });
+      if(response.ok) {
+        console.log(`Record deleted: ${ id }`)
+      } else {
+        console.log(response);
+      }
+    }
+
+    async function executeQuery() {
+      try {
+        const query = document.getElementById('sqlQuery').value.trim();
+        if (!query) {
+          displayError("Please enter a SQL query");
+          return;
+        }
+
+        // Show loading indicator
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const executeBtn = document.getElementById('executeBtn');
+        executeBtn.disabled = true;
+        loadingIndicator.style.display = 'inline-block';
+        
+        // Clear previous results
+        document.getElementById('queryResults').innerHTML = '';
+
+        const endpoint = '/api/execute-query';
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: query })
+        });
+
+        // Hide loading indicator
+        loadingIndicator.style.display = 'none';
+        executeBtn.disabled = false;
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`Query execution failed: ${errorData.message || errorData.error || 'Unknown error'}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.recordset) {
+          // Display SELECT results
+          displayResults(result.recordset);
+        } else {
+          // Display affected rows for non-SELECT queries
+          displaySuccess(`Query executed successfully. Rows affected: ${result.rowsAffected}`);
+        }
+        
+        console.log('Query result:', result);
+      } catch (error) {
+        displayError(error.message);
+        console.error('Error executing query:', error);
+      }
+    }
+
+    function displayResults(data) {
+      const resultsDiv = document.getElementById('queryResults');
+      resultsDiv.innerHTML = '';
+
+      if (!data || data.length === 0) {
+        resultsDiv.innerHTML = '<p>Query executed successfully, but no results were returned.</p>';
+        return;
+      }
+
+      // Create table
+      const table = document.createElement('table');
+      
+      // Create header row
+      const headerRow = document.createElement('tr');
+      const columns = Object.keys(data[0]);
+      
+      columns.forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        headerRow.appendChild(th);
+      });
+      
+      table.appendChild(headerRow);
+      
+      // Create data rows
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+        
+        columns.forEach(column => {
+          const td = document.createElement('td');
+          td.textContent = row[column] !== null ? row[column] : 'null';
+          tr.appendChild(td);
+        });
+        
+        table.appendChild(tr);
+      });
+      
+      resultsDiv.appendChild(table);
+    }
+
+    function displayError(message) {
+      const resultsDiv = document.getElementById('queryResults');
+      resultsDiv.innerHTML = `<p class="error">Error: ${message}</p>`;
+    }
+
+    function displaySuccess(message) {
+      const resultsDiv = document.getElementById('queryResults');
+      resultsDiv.innerHTML = `<p class="success-message">${message}</p>`;
+    }
+    </script>
+</body>
+
+</html>
