@@ -12,6 +12,19 @@
     <main>
     <h1>Vanilla JavaScript App</h1>
     <p>Loading content from the API: <b id="name">...</b></p>
+
+    <h1>Static Web Apps Database Connections</h1>
+    <blockquote>
+        Open the console in the browser developer tools to see the API responses.
+    </blockquote>
+    <div>
+        <button id="list" onclick="list()">List</button>
+        <button id="get" onclick="get()">Get</button>
+        <button id="update" onclick="update()">Update</button>
+        <button id="create" onclick="create()">Create</button>
+        <button id="delete" onclick="del()">Delete</button>
+    </div>
+
     </main>
 
     <script>
@@ -19,6 +32,14 @@
         const { text } = await( await fetch(`/api/message`)).json();
         document.querySelector('#name').textContent = text;
     }());
+
+    async function list() {
+      const endpoint = '/data-api/rest/Person';
+      const response = await fetch(endpoint);
+      const data = await response.json();
+      console.table(data.value);
+    }
+
     </script>
 </body>
 
