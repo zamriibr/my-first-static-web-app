@@ -24,25 +24,48 @@ app.http('execute-query', {
             // Get the query from request body
             const query = body.query;
             
-            // Get connection string from environment variables
+            // Use the specific connection string for your database
             const connectionString = "@env('DATABASE_CONNECTION_STRING')";
             
             if (!connectionString) {
                 throw new Error("Database connection string not configured");
             }
 
-            // Configure SQL connection
+            // Parse connection string manually
+            const connectionParts = {};
+            connectionString.split(';').forEach(part => {
+                if (!part) return;
+                const equalsPos = part.indexOf('=');
+                if (equalsPos > 0) {
+                    const key = part.substring(0, equalsPos).trim();
+                    const value = part.substring(equalsPos + 1).trim();
+                    connectionParts[key] = value;
+                }
+            });
+            
+            // Configure SQL connection based on your specific connection string format
             const config = {
-                user: undefined,       // Will be parsed from connection string
-                password: undefined,   // Will be parsed from connection string
-                server: undefined,     // Will be parsed from connection string
-                database: undefined,   // Will be parsed from connection string
+                user: connectionParts['User ID'],
+                password: connectionParts['Password'],
+                server: connectionParts['Server'] ? connectionParts['Server'].replace('tcp:', '').split(',')[0] : null,
+                database: connectionParts['Initial Catalog'],
                 options: {
-                    encrypt: true,     // For Azure SQL
-                    trustServerCertificate: false  // Change to true for local dev / self-signed certs
-                },
-                connectionString: connectionString
+                    encrypt: connectionParts['Encrypt'] === 'True',
+                    trustServerCertificate: connectionParts['TrustServerCertificate'] === 'True',
+                    connectionTimeout: parseInt(connectionParts['Connection Timeout'] || '30'),
+                    port: connectionParts['Server'] && connectionParts['Server'].includes(',') ? 
+                          parseInt(connectionParts['Server'].split(',')[1]) : 1433
+                }
             };
+            
+            // Log connection details for debugging (remove in production)
+            context.log('Connection config:', JSON.stringify({
+                user: config.user,
+                server: config.server,
+                database: config.database,
+                // Don't log password
+                hasPassword: !!config.password
+            }));
 
             // Create a connection pool
             pool = await sql.connect(config);
