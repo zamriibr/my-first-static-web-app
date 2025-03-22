@@ -6,7 +6,7 @@ app.http('message', {
     handler: async (request, context) => {
         return { 
             jsonBody: {
-                text: "Hello, from the API!"
+                text: "Hello, from the API API!"
             }
         };
     }
