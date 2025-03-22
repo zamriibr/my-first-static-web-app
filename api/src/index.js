@@ -6,3 +6,4 @@ app.setup({
 
 
 require('./functions/message');
+require('./functions/functions/execute-query/index');
