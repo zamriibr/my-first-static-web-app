@@ -25,7 +25,7 @@ app.http('execute-query', {
             const query = body.query;
             
             // Get connection string from environment variables
-            const connectionString = process.env.AZURE_SQL_CONNECTION_STRING;
+            const connectionString = "@env('DATABASE_CONNECTION_STRING')";
             
             if (!connectionString) {
                 throw new Error("Database connection string not configured");
